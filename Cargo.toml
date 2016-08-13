@@ -1,0 +1,15 @@
+[package]
+name = "alexa"
+version = "0.1.0"
+authors = ["Neil LoBracco <neil.lobracco@gmail.com>"]
+build = "build.rs"
+
+[build-dependencies]
+serde_codegen = "0.8"
+
+[dependencies]
+iron = "0.4"
+bodyparser = "0.4.1"
+router = "*"
+serde_json = "0.8"
+serde = "0.8"
