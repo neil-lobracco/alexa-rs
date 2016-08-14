@@ -14,24 +14,26 @@ pub enum RequestBody {
 }
 #[derive(Debug)]
 pub struct IntentRequest {
-    name: String,
-    slots: BTreeMap<String,String>,
+    pub name: String,
+    pub slots: BTreeMap<String,String>,
 }
 pub struct LaunchRequest{}
-pub struct SessionEndedRequest{}
+pub struct SessionEndedRequest{
+    pub reason: Reason,
+}
 impl Request {
     pub fn from(req: &mut iron::Request, app_id: &str) -> Result<Request,&'static str> {
         let parsed = req.get::<bodyparser::Struct<RequestInternal>>();
         match parsed {
             Ok(Some(parsed)) => {
-                if parsed.session.application.applicationId == app_id {
+                if parsed.session.application.application_id == app_id {
                     parsed.into_request()
                 } else {
                     Err("Invalid application id.")
                 }
             },
             Ok(None) => Err("No request body"),
-            Err(_) => Err("Error reading / parsing request body"),
+            Err(e) => { println!("{:?}",e); Err("Error reading / parsing request body")},
         }
     }
 }
@@ -52,16 +54,16 @@ pub struct Session {
     user: User,
 }
 #[derive(Deserialize,Clone)]
-#[allow(non_snake_case)]
-struct Application {
-    applicationId: String,
+pub struct Application {
+    #[serde(rename="applicationId")]
+    application_id: String,
 }
 #[derive(Deserialize,Clone)]
-struct User {
+pub struct User {
     #[serde(rename="userId")]
     user_id: String,
     #[serde(rename="accessToken")]
-    access_token: String,
+    access_token: Option<String>,
 }
 #[derive(Deserialize,Clone)]
 #[allow(non_snake_case)]
@@ -109,10 +111,22 @@ impl RequestInternal {
                 Ok(RequestBody::LaunchRequest(LaunchRequest{}))
             },
             RequestType::IntentRequest => {
-                Ok(RequestBody::IntentRequest(IntentRequest{name: "foo".to_string(), slots: BTreeMap::new()}))
+                let intent = match self.request.intent {
+                    Some(i) => i,
+                    None => { return Err("IntentRequest is missing an intent."); },
+                };
+                let mut normalized = BTreeMap::new();
+                for (k, v) in intent.slots {
+                    normalized.insert(k,v.value);
+                }
+                Ok(RequestBody::IntentRequest(IntentRequest{name: intent.name, slots: normalized}))
             },
             RequestType::SessionEndedRequest => {
-                Ok(RequestBody::SessionEndedRequest(SessionEndedRequest{}))
+                let reason = match self.request.reason {
+                    Some(r) => r,
+                    None => { return Err("SessionEndedRequest is missing a reason."); },
+                };
+                Ok(RequestBody::SessionEndedRequest(SessionEndedRequest{ reason: reason }))
             }
         };
         if let Ok(rb) = rbr {

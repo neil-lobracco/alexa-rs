@@ -1,0 +1,117 @@
+use std::borrow::Cow;
+pub struct Response<'a> {
+    pub session_attributes: Option<BTreeMap<String,serde_json::value::Value>>,
+    pub card: Option<Card<'a>>,
+    pub reprompt: Option<OutputSpeech<'a>>,
+    pub output_speech: Option<OutputSpeech<'a>>,
+    pub should_end_session: bool,
+}
+pub enum OutputSpeech<'a> {
+    Text(Cow<'a, str>),
+    Ssml(Cow<'a, str>),
+}
+pub enum Card<'a> {
+    Simple(SimpleCard<'a>),
+    Standard(StandardCard<'a>),
+    LinkAccount,
+}
+pub struct SimpleCard<'a> {
+    pub title: Cow<'a, str>,
+    pub content: Cow<'a, str>,
+}
+pub struct StandardCard<'a> {
+    pub title: Cow<'a, str>,
+    pub text: Cow<'a, str>,
+    pub image: Image<'a>,
+}
+
+#[derive(Serialize)]
+#[allow(non_snake_case)]
+struct ResponseInternal<'a> {
+    version: &'static str,
+    sessionAttributes: Option<BTreeMap<String,serde_json::value::Value>>,
+    response: ResponseBody<'a>,
+}
+
+#[derive(Serialize)]
+#[allow(non_snake_case)]
+struct ResponseBody<'a> {
+    outputSpeech: Option<OutputSpeechInternal<'a>>,
+    card: Option<CardInternal<'a>>,
+    reprompt: Option<OutputSpeechInternal<'a>>,
+    shouldEndSession: bool,
+}
+
+#[derive(Serialize)]
+struct OutputSpeechInternal<'a> {
+    #[serde(rename="type")]
+    speech_type: SpeechType,
+    text: Option<Cow<'a, str>>,
+    ssml: Option<Cow<'a, str>>,
+}
+impl<'a> From<OutputSpeech<'a>> for OutputSpeechInternal<'a> {
+    fn from(os: OutputSpeech<'a>) -> OutputSpeechInternal<'a> {
+       match os {
+           OutputSpeech::Text(t) => OutputSpeechInternal { speech_type: SpeechType::PlainText, text: Some(t), ssml: None },
+           OutputSpeech::Ssml(s) => OutputSpeechInternal { speech_type: SpeechType::SSML, text: None, ssml: Some(s) },
+       }
+    }
+}
+
+#[derive(Serialize)]
+#[allow(non_camel_case_types)]
+enum SpeechType {
+    PlainText,
+    SSML,
+}
+
+#[derive(Serialize)]
+struct CardInternal<'a> {
+    #[serde(rename="type")]
+    card_type: CardType,
+    title: Option<Cow<'a, str>>,
+    content: Option<Cow<'a, str>>,
+    text: Option<Cow<'a, str>>,
+    image: Option<Image<'a>>,
+}
+impl<'a> From<Card<'a>> for CardInternal<'a> {
+    fn from(c: Card<'a>) -> CardInternal<'a> {
+       match c {
+           Card::Simple(sc) => CardInternal { card_type: CardType::Simple, title: Some(sc.title), content: Some(sc.content), text: None, image: None },
+           Card::Standard(sc) => CardInternal { card_type: CardType::Standard, title: Some(sc.title), content: None, text: Some(sc.text), image: Some(sc.image) },
+           Card::LinkAccount => CardInternal { card_type: CardType::LinkAccount, title: None, content: None, text: None, image: None },
+       }
+    }
+}
+
+
+#[derive(Serialize)]
+enum CardType {
+    Simple,
+    Standard,
+    LinkAccount,
+}
+
+#[derive(Serialize)]
+pub struct Image<'a> {
+    #[serde(rename="smallImageUrl")]
+    small_image_url: Option<Cow<'a, str>>,
+    #[serde(rename="largeImageUrl")]
+    large_image_url: Option<Cow<'a, str>>,
+}
+
+impl<'a> From<Response<'a>> for ResponseInternal<'a> {
+    fn from(r: Response<'a>) -> ResponseInternal<'a> {
+        ResponseInternal {
+            version: "1.0",
+            sessionAttributes: r.session_attributes,
+            response: ResponseBody {
+                outputSpeech: r.output_speech.map(|os| os.into()),
+                card: r.card.map(|c| c.into()),
+                reprompt: r.reprompt.map(|r| r.into()),
+                shouldEndSession: r.should_end_session,
+            },
+        }
+    }
+}
+

@@ -18,7 +18,8 @@ impl iron::middleware::Handler for IronHandler {
         match res {
             Ok(ref req) => {
                 let r = self.request_handler.handle_request(req);
-                Ok(iron::Response::with((iron::status::Ok, serde_json::to_string(&r).unwrap())))
+                let ri: ResponseInternal = r.into();
+                Ok(iron::Response::with((iron::status::Ok, serde_json::to_string(&ri).unwrap())))
             },
             Err(s) => Ok(iron::Response::with((iron::status::BadRequest, s))),
         }
