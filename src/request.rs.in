@@ -49,7 +49,7 @@ pub struct Session {
     new: bool,
     #[serde(rename="sessionId")]
     session_id: String,
-    attributes: BTreeMap<String, serde_json::Value>,
+    attributes: Option<BTreeMap<String, serde_json::Value>>,
     application : Application,
     user: User,
 }
