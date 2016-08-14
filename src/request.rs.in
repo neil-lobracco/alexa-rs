@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use chrono::{DateTime,UTC};
 use iron::prelude::Plugin;
 pub struct Request {
-    session: Session,
-    timestamp: DateTime<UTC>,
-    body: RequestBody,
-    requestId: String,
+    pub session: Session,
+    pub timestamp: DateTime<UTC>,
+    pub body: RequestBody,
+    pub request_id: String,
 }
 pub enum RequestBody {
     IntentRequest(IntentRequest),
@@ -20,12 +20,18 @@ pub struct IntentRequest {
 pub struct LaunchRequest{}
 pub struct SessionEndedRequest{}
 impl Request {
-    pub fn from(req: &mut iron::Request) -> Result<Request,&'static str> {
+    pub fn from(req: &mut iron::Request, app_id: &str) -> Result<Request,&'static str> {
         let parsed = req.get::<bodyparser::Struct<RequestInternal>>();
         match parsed {
-            Ok(Some(parsed)) => parsed.into_request(),
+            Ok(Some(parsed)) => {
+                if parsed.session.application.applicationId == app_id {
+                    parsed.into_request()
+                } else {
+                    Err("Invalid application id.")
+                }
+            },
             Ok(None) => Err("No request body"),
-            Err(err) => Err("Error reading / parsing request body"),
+            Err(_) => Err("Error reading / parsing request body"),
         }
     }
 }
@@ -37,23 +43,28 @@ struct RequestInternal {
     request: RequestBodyInternal,
 }
 #[derive(Deserialize,Clone)]
-struct Session {
+pub struct Session {
     new: bool,
-    sessionId: String,
+    #[serde(rename="sessionId")]
+    session_id: String,
     attributes: BTreeMap<String, serde_json::Value>,
     application : Application,
     user: User,
 }
 #[derive(Deserialize,Clone)]
+#[allow(non_snake_case)]
 struct Application {
     applicationId: String,
 }
 #[derive(Deserialize,Clone)]
 struct User {
-    userId: String,
-    accessToken: String,
+    #[serde(rename="userId")]
+    user_id: String,
+    #[serde(rename="accessToken")]
+    access_token: String,
 }
 #[derive(Deserialize,Clone)]
+#[allow(non_snake_case)]
 struct RequestBodyInternal {
     #[serde(rename="type")]
     request_type: RequestType,
@@ -79,6 +90,7 @@ struct SlotInternal {
     value: String,
 }
 #[derive(Deserialize,Clone)]
+#[allow(non_camel_case_types)]
 pub enum Reason {
     USER_INITIATED,
     ERROR,
@@ -104,7 +116,7 @@ impl RequestInternal {
             }
         };
         if let Ok(rb) = rbr {
-            Ok(Request { session: session, timestamp: timestamp, body: rb, requestId: self.request.requestId })
+            Ok(Request { session: session, timestamp: timestamp, body: rb, request_id: self.request.requestId })
         } else {
             Err("?")
         }
