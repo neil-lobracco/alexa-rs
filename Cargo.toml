@@ -2,6 +2,9 @@
 name = "alexa"
 version = "0.1.0"
 authors = ["Neil LoBracco <neil.lobracco@gmail.com>"]
+description = "A library for building Alexa (Amazon Echo) skills"
+repository = "https://github.com/neil-lobracco/alexa-rs"
+license = "GPL-2.0"
 build = "build.rs"
 
 [build-dependencies]
@@ -11,6 +14,5 @@ serde_codegen = "0.8"
 chrono = "0.2"
 iron = "0.4"
 bodyparser = "0.4.1"
-router = "*"
 serde_json = "0.8"
 serde = "0.8"
