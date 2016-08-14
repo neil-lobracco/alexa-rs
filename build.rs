@@ -9,4 +9,8 @@ pub fn main() {
     let src = Path::new("src/request.rs.in");
     let dst = Path::new(&out_dir).join("request.rs");
     serde_codegen::expand(&src, &dst).unwrap();
+
+    let src = Path::new("src/response.rs.in");
+    let dst = Path::new(&out_dir).join("response.rs");
+    serde_codegen::expand(&src, &dst).unwrap();
 }
