@@ -1,0 +1,112 @@
+use std::collections::BTreeMap;
+use chrono::{DateTime,UTC};
+use iron::prelude::Plugin;
+pub struct Request {
+    session: Session,
+    timestamp: DateTime<UTC>,
+    body: RequestBody,
+    requestId: String,
+}
+pub enum RequestBody {
+    IntentRequest(IntentRequest),
+    LaunchRequest(LaunchRequest),
+    SessionEndedRequest(SessionEndedRequest),
+}
+#[derive(Debug)]
+pub struct IntentRequest {
+    name: String,
+    slots: BTreeMap<String,String>,
+}
+pub struct LaunchRequest{}
+pub struct SessionEndedRequest{}
+impl Request {
+    pub fn from(req: &mut iron::Request) -> Result<Request,&'static str> {
+        let parsed = req.get::<bodyparser::Struct<RequestInternal>>();
+        match parsed {
+            Ok(Some(parsed)) => parsed.into_request(),
+            Ok(None) => Err("No request body"),
+            Err(err) => Err("Error reading / parsing request body"),
+        }
+    }
+}
+
+#[derive(Deserialize,Clone)]
+struct RequestInternal {
+    version: String,
+    session: Session,
+    request: RequestBodyInternal,
+}
+#[derive(Deserialize,Clone)]
+struct Session {
+    new: bool,
+    sessionId: String,
+    attributes: BTreeMap<String, serde_json::Value>,
+    application : Application,
+    user: User,
+}
+#[derive(Deserialize,Clone)]
+struct Application {
+    applicationId: String,
+}
+#[derive(Deserialize,Clone)]
+struct User {
+    userId: String,
+    accessToken: String,
+}
+#[derive(Deserialize,Clone)]
+struct RequestBodyInternal {
+    #[serde(rename="type")]
+    request_type: RequestType,
+    requestId: String,
+    timestamp: String,
+    intent: Option<IntentInternal>,
+    reason: Option<Reason>,
+}
+#[derive(Deserialize,Clone)]
+enum RequestType {
+    LaunchRequest,
+    IntentRequest,
+    SessionEndedRequest,
+}
+#[derive(Deserialize,Clone)]
+struct IntentInternal {
+    name: String,
+    slots: BTreeMap<String, SlotInternal>,
+}
+#[derive(Deserialize,Clone)]
+struct SlotInternal {
+    name: String,
+    value: String,
+}
+#[derive(Deserialize,Clone)]
+pub enum Reason {
+    USER_INITIATED,
+    ERROR,
+    EXCEEDED_MAX_REPROMPTS,
+}
+
+impl RequestInternal {
+    fn into_request(self) -> Result<Request,&'static str> {
+        let session = self.session;
+        let timestamp: DateTime<UTC> = match self.request.timestamp.parse(){
+            Ok(d) => d,
+            Err(_) => { return Err("Could not parse timestamp"); }
+        };
+        let rbr: Result<RequestBody,&'static str> = match self.request.request_type {
+            RequestType::LaunchRequest => {
+                Ok(RequestBody::LaunchRequest(LaunchRequest{}))
+            },
+            RequestType::IntentRequest => {
+                Ok(RequestBody::IntentRequest(IntentRequest{name: "foo".to_string(), slots: BTreeMap::new()}))
+            },
+            RequestType::SessionEndedRequest => {
+                Ok(RequestBody::SessionEndedRequest(SessionEndedRequest{}))
+            }
+        };
+        if let Ok(rb) = rbr {
+            Ok(Request { session: session, timestamp: timestamp, body: rb, requestId: self.request.requestId })
+        } else {
+            Err("?")
+        }
+    }
+}

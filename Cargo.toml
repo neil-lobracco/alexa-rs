@@ -8,6 +8,7 @@ build = "build.rs"
 serde_codegen = "0.8"
 
 [dependencies]
+chrono = "0.2"
 iron = "0.4"
 bodyparser = "0.4.1"
 router = "*"
