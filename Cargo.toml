@@ -1,6 +1,6 @@
 [package]
 name = "alexa"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Neil LoBracco <neil.lobracco@gmail.com>"]
 description = "A library for building Alexa (Amazon Echo) skills"
 repository = "https://github.com/neil-lobracco/alexa-rs"

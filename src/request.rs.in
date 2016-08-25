@@ -84,7 +84,7 @@ enum RequestType {
 #[derive(Deserialize,Clone)]
 struct IntentInternal {
     name: String,
-    slots: BTreeMap<String, SlotInternal>,
+    slots: Option<BTreeMap<String, SlotInternal>>,
 }
 #[derive(Deserialize,Clone)]
 struct SlotInternal {
@@ -116,8 +116,10 @@ impl RequestInternal {
                     None => { return Err("IntentRequest is missing an intent."); },
                 };
                 let mut normalized = BTreeMap::new();
-                for (k, v) in intent.slots {
-                    normalized.insert(k,v.value);
+                if let Some(slots) = intent.slots{
+                    for (k, v) in slots {
+                        normalized.insert(k,v.value);
+                    }
                 }
                 Ok(RequestBody::IntentRequest(IntentRequest{name: intent.name, slots: normalized}))
             },
